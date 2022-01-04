@@ -194,50 +194,40 @@ async def play_song(ctx, message, user):
     await ctx.send(message)
 
   # play from local
-  elif message[:3] == "-jw":
+  elif message[:6] == "-local":
+    # seperates the command from the song name
+    message = message[6:]
     file_found = False
-    message = message[4:]
+    foldername = "local"
 
-    song_identifier = message[0]
-
-    if song_identifier in ("m", "v", "i", "o"):
-      message = message[2:]
-      for file in os.listdir(f"jw/{song_identifier}"):
-
-        #filepath = r"jw//"
-        #filepath = filepath + song_identifier
-        #filepath = filepath + r"//"
-        #filepath = filepath + file
-
-        filename = file.split(".mp3")[0]
-        if message == filename:
-          file_found = True
-          #media_info = MediaInfo.parse(filepath)
-          #for track in media_info.tracks:
-          #  if track.track_type == 'General':
-          #    print(track.title)    
-          break
-        
-    if file_found == True:
-      source = discord.FFmpegOpusAudio(source=f"jw/{song_identifier}/{file}", options = "-loglevel panic")
+    # searches folder for the song name
+    for file in os.listdir(foldername):
+      filename = file.split(".mp3")[0]
+      if message == filename:
+        file_found = True
+        break
+    
+    # plays the song if the file is found
+    if file_found:
+      source = discord.FFmpegOpusAudio(source=f"{foldername}/{file}", options = "-loglevel panic")
       vc.play(source)
-      await ctx.send(f"Playing {message[3:]}")  
+      await ctx.send(f"Playing {message[6:]}")  
     else:
       await ctx.send(f"Song not found")    
 
-  #play from youtube
+  # play from youtube
   else:
     with youtube_dl.YoutubeDL(VDL_OPTIONS) as ydl:
       ydl.cache.remove()
 
-      #title or url?
+      # checks if the message is a title or url
       extractors = youtube_dl.extractor.gen_extractors()
       message_type = "title"
       for e in extractors:
         if e.suitable(message) and e.IE_NAME != "generic":
           message_type = "url"
 
-      #if title:
+      # searches the title and gets the top video url
       if message_type == "title":
         title = message
         info = VideosSearch(title, limit = 1)
@@ -248,16 +238,15 @@ async def play_song(ctx, message, user):
           return()
         playlist = False
 
-      #if url:
+      # checks if the url is a playlist
       else:
         info = await check_playlist(message)
         url = info[0]
         playlist = info[1]
         playlist_url = info[2]
       
-      #if url is a playlist:
-      if playlist == True:
-        print(playlist_url)
+      # extracts all songs from the playlist and queues them
+      if playlist:
         await ctx.send(f"Processing playlist, please wait")
         info = ydl.extract_info(playlist_url, download=False)
         count = 0
@@ -267,26 +256,44 @@ async def play_song(ctx, message, user):
               queue.append(info["entries"][count]["webpage_url"])
           except:
             break
-          count+= 1
+          count += 1
 
         url2 = info["entries"][0]["url"]
         title = info["entries"][0]["title"]
 
-      #if not a playlist
+      # extracts playable url and gets title
       else:
-        print(url)
         info = ydl.extract_info(url, download=False)
         url2 = info["formats"][0]["url"]
         title = info.get('title', None)
 
-      #play audio
+      # plays song
       source = await discord.FFmpegOpusAudio.from_probe(url2,**FFMPEG_OPTIONS)
-      
       vc.play(source)
-      
       await ctx.send(f"Playing {title}")
 
-#Queue
+# Check Playlist
+async def check_playlist(url):
+  # if the url is a video in a playlist, it returns the video only
+  if "&list=" in url:
+    playlist_url = url
+    url = url.split("&list=")[0]
+    playlist = False
+
+  # if the url is a playlist, it returns the playlist
+  elif "?list=" in url:
+    playlist_url = url
+    url = url.split("?list=")[0]
+    playlist = True
+    
+  else:
+    playlist = False
+    playlist_url = None
+  return(url, playlist, playlist_url)
+
+# Looped functions
+
+# Queue
 async def check_queue():
   while True:
     # checks that a song is in the queue and global_ctx is set
@@ -300,25 +307,8 @@ async def check_queue():
         await play_song(ctx, message, "bot")
         queue[0]
     
-    #loops every 1 second
+    # loops every 1 second
     await asyncio.sleep(1)
-
-#Check Playlist
-async def check_playlist(url):
-  # if the url is a video in a playlist, it returns the video only
-  if "&list=" in url:
-    playlist_url = url
-    url = url.split("&list=")[0]
-    playlist = False
-  # if the url is a playlist, it returns the playlist
-  elif "?list=" in url:
-    playlist_url = url
-    url = url.split("?list=")[0]
-    playlist = True
-  else:
-    playlist = False
-    playlist_url = None
-  return(url, playlist, playlist_url)
 
 # checks the queue
 client.loop.create_task(check_queue())
