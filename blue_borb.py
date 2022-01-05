@@ -25,29 +25,34 @@ client = commands.Bot(intents=intents, command_prefix = "?")
 # allows you do edit the help command
 client.remove_command("help")
 
-# creates global variables (suggestions for a more efficient way to do this welcome)
-global queue
-global global_ctx
-global paused
+# creates global variables
 queue = [] 
-global_ctx = []
-paused = [False]
+gloal_ctx = None
+paused = False
 
 # COMMANDS
 
-# search for 'ctx.send' to set custom messages
+# edit the 'ctx.send' parameters to set custom messages
 
-# Start
+# On Start
 @client.event
 async def on_ready():
   print("Blue Borb is ready!")
 
+# Help
+@client.command(pass_context=True)
+async def help(ctx):
+  await ctx.send("Join: ?join\nLeave: ?leave\nPlay: ?play [title/url]\nPlay Local: ?play -local [name]\nSkip: ?skip\nPause: ?pause ?stop\nResume: ?resume\nClear Queue: ?clear\nPlaytop: ?playtop [song]\nPlayskip: ?playskip [song]\nShuffle: ?shuffle")
+  
 # Join
 @client.command(pass_context=True)
 async def join(ctx):
   # sets global_ctx to ctx to be used by other functions
-  paused.clear()
-  paused.append(False)
+  await set_ctx(ctx)
+
+  # unpauses the bot
+  global paused
+  paused = False
 
   # user is not in a voice channel
   if ctx.author.voice is None: 
@@ -57,18 +62,25 @@ async def join(ctx):
   else:
     voice_channel = ctx.author.voice.channel
     # bot is not in a voice channel
-    if ctx.voice_client is None: 
+    if ctx.voice_client is None:
       await voice_channel.connect()
     # bot is already in a voice channel
     else: 
-      await ctx.voice_client.move_to(voice_channel)
+      # bot is already in current channel
+      if voice_channel.id == client.get_channel("ID"):
+        pass
+      else:
+        await ctx.voice_client.move_to(voice_channel)
   
 # Leave
 @client.command(pass_context=True)
 async def leave(ctx):
   # sets global_ctx to ctx to be used by other functions
-  paused.clear()
-  paused.append(False)
+  await set_ctx(ctx)
+
+  # unpauses the bot
+  global paused
+  paused = False
 
   # bot is not in a channel
   if ctx.voice_client is None:
@@ -84,52 +96,89 @@ async def leave(ctx):
 @client.command(pass_context=True)
 async def play(ctx, *, message):
   # sets global_ctx to ctx to be used by other functions
-  global_ctx.clear()
-  global_ctx.append(ctx)
+  await set_ctx(ctx)
 
-  # join the voice channel if not already in it
-  await join(ctx)
+  # if a song is paused, it resumes
+  global paused
+  if paused:
+    paused = False
+  
+  else:
+    # join the voice channel if not already in it
+    await join(ctx)
 
-  # queues the song if the bot is already playing one
-  if ctx.voice_client.is_playing():
-    queue.append(message)
 
-  # plays or queues song
-  await play_song(ctx, message, "bot")
+    # plays or queues song
+    await play_song(ctx, message, "bot")
+
+# Skip
+@client.command(pass_context=True)
+async def skip(ctx):
+  # sets paused to True
+  global paused
+  paused = False
+
+  try:
+    ctx.voice_client.stop()
+    await ctx.send("Skipped")
+  except AttributeError:
+    await ctx.send("I'm not playing anything")
+
+# Stop
+@client.command(pass_context=True)
+async def stop(ctx):
+  await pause(ctx)
 
 # Pause
 @client.command(pass_context=True)
 async def pause(ctx):
-  # sets paused to True
-  paused.clear()
-  paused.append(True)
-  ctx.voice_client.pause()
-  await ctx.send("Paused")
+  global paused
+
+  # the bot is playing
+  if ctx.voice_client.is_playing():
+    paused = True
+    ctx.voice_client.pause()
+    await ctx.send("Paused")
+  # bot is already paused
+  elif paused == True:
+    await ctx.send("I'm already paused")
+  # bot isn't playing
+  else:
+    await ctx.send("I'm not playing anything")
 
 # Resume
 @client.command(pass_context=True)
 async def resume(ctx):
   # sets paused to False
-  paused.clear()
-  paused.append(False)
-  ctx.voice_client.resume()
-  await ctx.send("Resumed")
+  global paused
+
+  # the bot is playing
+  if ctx.voice_client.is_playing():
+    await ctx.send("Already playing")
+  else:
+    paused = False
+    ctx.voice_client.resume()
+    await ctx.send("Resumed")
 
 # Clear
 @client.command(pass_context=True)
 async def clear(ctx):
   queue.clear()
+  await ctx.send("Queue cleared")
 
 # Playtop
 @client.command(pass_context=True)
 async def playtop(ctx, *, message):  
   # sets global_ctx to ctx to be used by other functions
-  global_ctx.clear()
-  global_ctx.append(ctx)
+  await set_ctx(ctx)
+
+  # unpauses the bot
+  global paused
+  paused = False
 
   # checks if the bot is already playing a song
   if not ctx.voice_client.is_playing():
-    print("I'm not playing anything, you can use ?play")
+    await ctx.send("I'm not playing anything, you can use ?play")
   else:
     # adds the song to the top of the queue
     queue.insert(0, message)
@@ -138,45 +187,44 @@ async def playtop(ctx, *, message):
 @client.command(pass_context=True)
 async def playskip(ctx, *, message):
   # sets global_ctx to ctx to be used by other functions
-  global_ctx.clear()
-  global_ctx.append(ctx)
+  await set_ctx(ctx)
 
-  # checks if a song is playing
-  if ctx.voice_client.is_playing():
-    ctx.voice_client.stop()
-    await ctx.send("Skipped")
-  else:
-    await ctx.send("Nothing is playing")
+  # unpauses the bot
+  global paused
+  paused = False
 
-  # plays or queues song
+  # skips current song if playing
+  await skip(ctx)
+
+  # adds song to queue if one is already playing
   await play_song(ctx, message, "bot")
+
+
 
 # Shuffle
 @client.command(pass_context=True)
 async def shuffle(ctx):
   # sets global_ctx to ctx to be used by other functions
-  global_ctx.clear()
-  global_ctx.append(ctx)
+  await set_ctx(ctx)
 
-  # creates a list of the songs in the queue
-  temp_queue = []
-  for item in queue:
-    temp_queue.append(item)
+  # shuffles the queue
+  global queue
+  random.shuffle(queue)
 
-  # shuffles the list
-  random.shuffle(temp_queue)
-
-  # sets the queue to the shuffled list
-  queue.clear()
-  for item in temp_queue:
-    queue.append(item)
   await ctx.send("Shuffled")
+
+# Show Queue
+@client.command(pass_context=True)
+async def show_queue(ctx):
+  global queue
+    
 
 # Only used by the bot
 
 # Play Song
 @client.command(pass_context=True)
 async def play_song(ctx, message, user):
+  global queue
   playlist = False
   # makes sure the user isn't using the command
   if user != "bot":
@@ -192,11 +240,12 @@ async def play_song(ctx, message, user):
     message_list = ["Song queued","Just for you, I will queue this song","Adding it to the queue \n('-)-D[song]               [queue box]"]
     message = message_list[randrange(0, len(message_list))]
     await ctx.send(message)
+    queue.append(message)
 
   # play from local
   elif message[:6] == "-local":
     # seperates the command from the song name
-    message = message[6:]
+    message = message[7:]
     file_found = False
     foldername = "local"
 
@@ -214,7 +263,7 @@ async def play_song(ctx, message, user):
       await ctx.send(f"Playing {message[6:]}")  
     else:
       await ctx.send(f"Song not found")    
-
+  
   # play from youtube
   else:
     with youtube_dl.YoutubeDL(VDL_OPTIONS) as ydl:
@@ -234,7 +283,7 @@ async def play_song(ctx, message, user):
         try:
           url = (info.result()["result"][0]["link"])
         except:
-          print("invalid title")
+          await ctx.send("Invalid title")
           return()
         playlist = False
 
@@ -244,19 +293,14 @@ async def play_song(ctx, message, user):
         url = info[0]
         playlist = info[1]
         playlist_url = info[2]
-      
+
       # extracts all songs from the playlist and queues them
       if playlist:
         await ctx.send(f"Processing playlist, please wait")
         info = ydl.extract_info(playlist_url, download=False)
-        count = 0
-        while True:
-          try:
-            if count > 0:
-              queue.append(info["entries"][count]["webpage_url"])
-          except:
-            break
-          count += 1
+
+        for song in info["entries"]:
+          queue.append(song["webpage_url"])
 
         url2 = info["entries"][0]["url"]
         title = info["entries"][0]["title"]
@@ -267,10 +311,10 @@ async def play_song(ctx, message, user):
         url2 = info["formats"][0]["url"]
         title = info.get('title', None)
 
-      # plays song
-      source = await discord.FFmpegOpusAudio.from_probe(url2,**FFMPEG_OPTIONS)
-      vc.play(source)
-      await ctx.send(f"Playing {title}")
+        # plays song
+        source = await discord.FFmpegOpusAudio.from_probe(url2,**FFMPEG_OPTIONS)
+        vc.play(source)
+        await ctx.send(f"Playing {title}")
 
 # Check Playlist
 async def check_playlist(url):
@@ -291,21 +335,33 @@ async def check_playlist(url):
     playlist_url = None
   return(url, playlist, playlist_url)
 
+# Set CTX
+async def set_ctx(ctx):
+  # sets global_ctx to ctx to be used by other functions
+  global global_ctx
+  global_ctx = ctx
+
 # Looped functions
 
 # Queue
 async def check_queue():
   while True:
     # checks that a song is in the queue and global_ctx is set
-    if len(queue) > 0 and len(global_ctx) > 0:
+    global global_ctx
+    if len(queue) > 0 and global_ctx != None:
       # sets ctx
-      ctx = global_ctx[0]
+      ctx = global_ctx
+
+      global paused
 
       # plays the song if the bot is already playing one and isn't paused
-      if not ctx.voice_client.is_playing() and paused[0] == False:
-        message = queue[0]
-        await play_song(ctx, message, "bot")
-        queue[0]
+      try:
+        if ctx.voice_client.is_playing() == False and paused == False:
+          message = queue[0]
+          await play_song(ctx, message, "bot")
+          queue.pop(0)
+      except AttributeError:
+        pass
     
     # loops every 1 second
     await asyncio.sleep(1)
