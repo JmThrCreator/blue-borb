@@ -237,9 +237,7 @@ async def play_song(ctx, message, user):
 
   # if playing, queue
   if vc.is_playing():
-    message_list = ["Song queued","Just for you, I will queue this song","Adding it to the queue \n('-)-D[song]               [queue box]"]
-    message = message_list[randrange(0, len(message_list))]
-    await ctx.send(message)
+    await ctx.send("Song queued")
     queue.append(message)
 
   # play from local
