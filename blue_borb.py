@@ -199,8 +199,6 @@ async def playskip(ctx, *, message):
   # adds song to queue if one is already playing
   await play_song(ctx, message, "bot")
 
-
-
 # Shuffle
 @client.command(pass_context=True)
 async def shuffle(ctx):
@@ -217,8 +215,7 @@ async def shuffle(ctx):
 @client.command(pass_context=True)
 async def show_queue(ctx):
   global queue
-    
-
+  
 # Only used by the bot
 
 # Play Song
