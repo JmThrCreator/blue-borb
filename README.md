@@ -6,7 +6,7 @@ A discord music bot that you can quickly run and use on your server.
 
 Play videos and playlists from YouTube using URLs and titles.
 Play mp3 files from the local folder.
-Commands: join, leave, play, pause, resume, skip, clear queue, playtop, playskip, shuffle
+Commands: join, leave, play, pause, resume, skip, clear queue, playtop, playskip, shuffle.
 Only suitable for use on one server at a time.
 
 ## Setup
