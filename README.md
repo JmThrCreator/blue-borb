@@ -16,3 +16,21 @@ Only suitable for use on one server at a time.
 3. Set server members intent to true under the Bot setting
 4. Give the bot connect and speak permissions under OAuth2
 5. Copy the invite link and add the bot to your server
+
+## Adding to Heroku
+
+1. Clone this git repo and set it up
+2. Create Heroku app
+3. Install Heroku CLI
+5. Add the buildback: https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git
+4. Run the following:
+```
+cd [repo location]
+heroku login
+heroku git:remote -a [app name]
+git push heroku master
+```
+6. Run the following in Heroku console:
+```
+python3 blue_borb.py
+```
