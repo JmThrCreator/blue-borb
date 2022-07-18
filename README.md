@@ -30,7 +30,4 @@ heroku login
 heroku git:remote -a [app name]
 git push heroku master
 ```
-6. Run the following in Heroku console:
-```
-python3 blue_borb.py
-```
+6. Turn on worker python blue_borb.py
