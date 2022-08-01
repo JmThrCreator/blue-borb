@@ -17,6 +17,15 @@ Only suitable for use on one server at a time.
 4. Give the bot connect and speak permissions under OAuth2
 5. Copy the invite link and add the bot to your server
 
+# Linux Setup
+
+```
+sudo apt install python3-pip
+pip install requirements.txt
+sudo apt install ffmpeg
+python3 blue_borb.py
+```
+
 ## Adding to Heroku
 
 1. Clone this git repo and set it up
