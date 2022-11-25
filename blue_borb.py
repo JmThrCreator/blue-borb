@@ -18,6 +18,7 @@ file.close()
 # sets permissions
 intents = discord.Intents.default()
 intents.members = True
+intents.message_content = True
 
 # creates bot
 client = commands.Bot(intents=intents, command_prefix = "?")
@@ -362,9 +363,9 @@ async def check_queue():
     await asyncio.sleep(1)
 
 # checks the queue
-client.loop.create_task(check_queue())
 
 # BOT
-
-# runs the bot
-client.run(token)
+async def main():
+  async with client:
+      client.loop.create_task(check_queue())
+      await client.run(token)
